@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS — Ultimate Tic Tac Toe</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Unbounded:wght@400;600;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#060810; --bg-1:#0a0e18; --bg-2:#131826;
+    --surface:rgba(255,255,255,.025); --surface-2:rgba(255,255,255,.05);
+    --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.16);
+    --text:#e8edf5; --text-muted:#8892a8; --text-dim:#5a6378;
+    --x-color:#ff5e3a; --x-glow:rgba(255,94,58,.55); --x-dim:rgba(255,94,58,.12);
+    --o-color:#00e5d4; --o-glow:rgba(0,229,212,.55); --o-dim:rgba(0,229,212,.12);
+    --accent:#ffd166; --accent-glow:rgba(255,209,102,.5);
+    --danger:#ef476f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Space Grotesk',system-ui,sans-serif;
+    background:var(--bg-0); color:var(--text);
+    min-height:100vh; overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* ── Background ── */
+  .bg-gradient{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse 70% 50% at 15% 0%, rgba(255,94,58,.10), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 85% 100%, rgba(0,229,212,.10), transparent 55%),
+      radial-gradient(ellipse 50% 35% at 50% 50%, rgba(255,209,102,.025), transparent 70%),
+      var(--bg-0);
+  }
+  .bg-grid{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image:radial-gradient(ellipse at center, black 25%, transparent 75%);
+    -webkit-mask-image:radial-gradient(ellipse at center, black 25%, transparent 75%);
+  }
+  #particles{position:fixed; inset:0; z-index:50; pointer-events:none}
+  .app{position:relative; z-index:1}
+
+  /* ── Header ── */
+  header{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:18px 28px; border-bottom:1px solid var(--border);
+    background:rgba(8,11,20,.7); backdrop-filter:blur(20px);
+    position:sticky; top:0; z-index:20;
+  }
+  .brand{display:flex; align-items:center; gap:14px}
+  .logo{
+    width:46px; height:46px; display:grid; place-items:center;
+    background:linear-gradient(135deg, var(--x-color), var(--o-color));
+    border-radius:13px;
+    font-family:'Unbounded',sans-serif; font-weight:900; font-size:22px;
+    color:var(--bg-0);
+    box-shadow:0 0 28px rgba(255,94,58,.35), 0 0 28px rgba(0,229,212,.25), inset 0 1px 0 rgba(255,255,255,.3);
+    position:relative;
+  }
+  .logo::after{
+    content:''; position:absolute; inset:-2px; border-radius:15px;
+    background:linear-gradient(135deg, var(--x-color), var(--o-color));
+    z-index:-1; filter:blur(8px); opacity:.5;
+  }
+  .brand h1{
+    font-family:'Unbounded',sans-serif; font-weight:800;
+    font-size:22px; letter-spacing:1px; line-height:1; margin:0;
+  }
+  .brand p{
+    font-size:11px; color:var(--text-muted); letter-spacing:2.5px;
+    text-transform:uppercase; margin:5px 0 0; font-weight:500;
+  }
+  .header-controls{display:flex; align-items:center; gap:10px}
+  .seg{
+    display:flex; background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:3px; gap:2px;
+  }
+  .seg button{
+    background:transparent; border:none; color:var(--text-muted);
+    padding:7px 14px; font-size:12px; font-weight:600; letter-spacing:.5px;
+    border-radius:7px; cursor:pointer; transition:all .2s;
+    font-family:inherit; text-transform:uppercase;
+  }
+  .seg button.active{
+    background:var(--surface-2); color:var(--text);
+    box-shadow:0 1px 0 rgba(255,255,255,.05), 0 2px 8px rgba(0,0,0,.3);
+  }
+  .seg button:hover:not(.active){color:var(--text)}
+  .icon-btn{
+    width:38px; height:38px; display:grid; place-items:center;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; color:var(--text-muted); cursor:pointer;
+    transition:all .2s;
+  }
+  .icon-btn:hover{color:var(--text); border-color:var(--border-strong); background:var(--surface-2)}
+  .icon-btn svg{width:18px; height:18px}
+
+  /* ── Main Layout ── */
+  main{
+    display:grid; grid-template-columns:300px 1fr 300px;
+    gap:24px; padding:28px; max-width:1440px; margin:0 auto;
+    align-items:start;
+  }
+  .panel{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:20px;
+    backdrop-filter:blur(12px);
+  }
+  .panel h3{
+    font-size:11px; letter-spacing:2px; text-transform:uppercase;
+    color:var(--text-dim); margin:0 0 14px; font-weight:600;
+  }
+
+  /* ── Turn Indicator ── */
+  .turn-panel{margin-bottom:16px}
+  .turn-cards{display:flex; align-items:center; gap:10px; margin-bottom:14px}
+  .player-card{
+    flex:1; padding:14px 12px; border-radius:12px;
+    background:var(--surface); border:1.5px solid var(--border);
+    text-align:center; transition:all .3s; position:relative; overflow:hidden;
+  }
+  .player-card.x{--pc:var(--x-color); --pcg:var(--x-glow)}
+  .player-card.o{--pc:var(--o-color); --pcg:var(--o-glow)}
+  .player-card.active{
+    border-color:var(--pc);
+    background:linear-gradient(180deg, color-mix(in srgb, var(--pc) 10%, transparent), var(--surface));
+    box-shadow:0 0 24px color-mix(in srgb, var(--pc) 25%, transparent), inset 0 0 20px color-mix(in srgb, var(--pc) 8%, transparent);
+  }
+  .player-card .symbol{
+    font-family:'Unbounded',sans-serif; font-weight:900; font-size:28px;
+    color:var(--pc); line-height:1;
+    filter:drop-shadow(0 0 8px var(--pcg));
+  }
+  .player-card .label{
+    font-size:10px; letter-spacing:1.5px; color:var(--text-muted);
+    text-transform:uppercase; margin-top:6px; font-weight:600;
+  }
+  .player-card.active .label{color:var(--text)}
+  .player-card.active::before{
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:var(--pc); box-shadow:0 0 12px var(--pc);
+    animation:pulseBar 1.6s ease-in-out infinite;
+  }
+  @keyframes pulseBar{0%,100%{opacity:.6}50%{opacity:1}}
+  .vs{
+    font-family:'JetBrains Mono',monospace; font-size:10px;
+    color:var(--text-dim); letter-spacing:1px;
+  }
+  .status-box{
+    padding:12px 14px; background:var(--bg-1); border-radius:10px;
+    border:1px solid var(--border); font-size:13px;
+  }
+  .status-box .label{
+    font-size:10px; letter-spacing:1.5px; color:var(--text-dim);
+    text-transform:uppercase; margin-bottom:4px;
+  }
+  .status-box .value{font-weight:600; color:var(--text)}
+  .status-box .value.muted{color:var(--text-muted)}
+  .thinking-dot{
+    display:inline-block; width:6px; height:6px; border-radius:50%;
+    background:var(--o-color); margin-left:6px;
+    animation:blink 1s ease-in-out infinite;
+  }
+  @keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+
+  /* ── Stats ── */
+  .stat-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:8px 0; border-bottom:1px solid var(--border); font-size:13px;
+  }
+  .stat-row:last-of-type{border-bottom:none}
+  .stat-row .label{color:var(--text-muted); display:flex; align-items:center; gap:8px}
+  .stat-row .dot{width:8px; height:8px; border-radius:50%}
+  .stat-row .dot.x{background:var(--x-color); box-shadow:0 0 6px var(--x-glow)}
+  .stat-row .dot.o{background:var(--o-color); box-shadow:0 0 6px var(--o-glow)}
+  .stat-row .dot.d{background:var(--text-dim)}
+  .stat-row .value{
+    font-family:'JetBrains Mono',monospace; font-weight:600; font-size:14px;
+  }
+  .reset-stats{
+    width:100%; margin-top:12px; padding:8px;
+    background:transparent; border:1px solid var(--border);
+    color:var(--text-muted); border-radius:8px; cursor:pointer;
+    font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    font-family:inherit; transition:all .2s;
+  }
+  .reset-stats:hover{color:var(--danger); border-color:var(--danger)}
+
+  /* ── Board ── */
+  .board-section{display:flex; flex-direction:column; align-items:center; gap:16px}
+  .board-frame{
+    position:relative; padding:18px;
+    background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.005));
+    border:1px solid var(--border-strong); border-radius:20px;
+    box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .board-frame::before, .board-frame::after{
+    content:''; position:absolute; width:24px; height:24px;
+    border:1.5px solid var(--accent); opacity:.4;
+  }
+  .board-frame::before{top:6px; left:6px; border-right:none; border-bottom:none; border-radius:6px 0 0 0}
+  .board-frame::after{bottom:6px; right:6px; border-left:none; border-top:none; border-radius:0 0 6px 0}
+  .mega-board{
+    display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
+    gap:10px; width:min(70vw, 580px); aspect-ratio:1;
+  }
+  .mini-board{
+    display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
+    gap:3px; padding:6px; border-radius:10px;
+    background:rgba(255,255,255,.015);
+    border:1.5px solid var(--border);
+    transition:all .35s cubic-bezier(.2,.8,.2,1);
+    position:relative;
+  }
+  .mini-board.active-x{
+    border-color:var(--x-color);
+    background:linear-gradient(180deg, var(--x-dim), rgba(255,94,58,.03));
+    box-shadow:0 0 30px rgba(255,94,58,.2), inset 0 0 20px rgba(255,94,58,.05);
+  }
+  .mini-board.active-o{
+    border-color:var(--o-color);
+    background:linear-gradient(180deg, var(--o-dim), rgba(0,229,212,.03));
+    box-shadow:0 0 30px rgba(0,229,212,.2), inset 0 0 20px rgba(0,229,212,.05);
+  }
+  .mini-board.won-x{background:linear-gradient(180deg, var(--x-dim), rgba(255,94,58,.04)); border-color:rgba(255,94,58,.4)}
+  .mini-board.won-o{background:linear-gradient(180deg, var(--o-dim), rgba(0,229,212,.04)); border-color:rgba(0,229,212,.4)}
+  .mini-board.drawn{opacity:.5}
+  .mini-board .win-overlay{
+    position:absolute; inset:6px; pointer-events:none;
+    display:grid; place-items:center;
+  }
+  .mini-board .win-symbol{
+    font-family:'Unbounded',sans-serif; font-weight:900;
+    font-size:min(8vw, 56px); opacity:.18;
+    color:var(--pc);
+  }
+  .mini-board.won-x .win-symbol{color:var(--x-color)}
+  .mini-board.won-o .win-symbol{color:var(--o-color)}
+
+  .cell{
+    background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.04);
+    border-radius:5px; cursor:pointer; transition:all .15s;
+    position:relative; aspect-ratio:1; padding:0;
+    display:grid; place-items:center; overflow:hidden;
+  }
+  .cell:hover:not(.filled):not(.locked){
+    background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.12);
+  }
+  .cell.locked{cursor:not-allowed}
+  .cell.filled{cursor:default}
+  .cell.invalid-flash{animation:invalidShake .3s ease}
+  @keyframes invalidShake{
+    0%,100%{transform:translateX(0)}
+    25%{transform:translateX(-3px); background:rgba(239,71,111,.15)}
+    75%{transform:translateX(3px); background:rgba(239,71,111,.15)}
+  }
+  .cell.last-move{
+    box-shadow:inset 0 0 0 1.5px var(--accent);
+  }
+  .cell.winning-cell{
+    background:rgba(255,209,102,.12);
+    animation:winCellPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes winCellPulse{
+    0%,100%{box-shadow:inset 0 0 0 1px rgba(255,209,102,.4), 0 0 12px rgba(255,209,102,.2)}
+    50%{box-shadow:inset 0 0 0 1.5px rgba(255,209,102,.8), 0 0 20px rgba(255,209,102,.4)}
+  }
+
+  /* ── Pieces (X / O) ── */
+  .piece{width:100%; height:100%; display:grid; place-items:center; padding:14%}
+  .piece svg{width:100%; height:100%; overflow:visible}
+  .piece-x{color:var(--x-color); filter:drop-shadow(0 0 6px var(--x-glow))}
+  .piece-o{color:var(--o-color); filter:drop-shadow(0 0 6px var(--o-glow))}
+  .piece svg path, .piece svg circle{
+    stroke:currentColor; stroke-width:8; stroke-linecap:round; fill:none;
+    stroke-dasharray:120; stroke-dashoffset:120;
+    animation:drawPiece .35s cubic-bezier(.4,0,.2,1) forwards;
+  }
+  .piece svg path:nth-child(2){animation-delay:.12s}
+  @keyframes drawPiece{to{stroke-dashoffset:0}}
+  .piece.preview{opacity:.22; animation:none}
+  .piece.preview svg path, .piece.preview svg circle{stroke-dashoffset:0; animation:none}
+
+  /* mini-board win line */
+  .mini-win-line{
+    position:absolute; pointer-events:none;
+    stroke-width:6; stroke-linecap:round; fill:none;
+    filter:drop-shadow(0 0 8px currentColor);
+    animation:drawWinLine .5s ease-out forwards;
+    stroke-dasharray:200; stroke-dashoffset:200;
+  }
+  @keyframes drawWinLine{to{stroke-dashoffset:0}}
+
+  /* mega-board win line */
+  .mega-win-line{
+    position:absolute; pointer-events:none; z-index:5;
+    stroke-width:8; stroke-linecap:round; fill:none;
+    filter:drop-shadow(0 0 16px currentColor) drop-shadow(0 0 24px currentColor);
+    animation:drawMegaLine .8s ease-out forwards;
+    stroke-dasharray:1000; stroke-dashoffset:1000;
+  }
+  @keyframes drawMegaLine{to{stroke-dashoffset:0}}
+
+  /* ── Board footer ── */
+  .board-footer{
+    display:flex; justify-content:space-between; align-items:center;
+    width:min(70vw, 580px); padding:0 4px;
+    font-family:'JetBrains Mono',monospace; font-size:12px;
+    color:var(--text-muted); letter-spacing:1px;
+  }
+  .board-footer .item{display:flex; align-items:center; gap:8px}
+  .board-footer .item strong{color:var(--text); font-weight:600}
+
+  /* ── Controls ── */
+  .btn{
+    width:100%; padding:11px 14px; border-radius:10px;
+    border:1px solid var(--border-strong); cursor:pointer;
+    font-family:inherit; font-size:12px; font-weight:600;
+    letter-spacing:1.2px; text-transform:uppercase;
+    transition:all .2s; display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg, var(--x-color), var(--o-color));
+    color:var(--bg-0); border:none;
+    box-shadow:0 4px 20px rgba(255,94,58,.25), 0 4px 20px rgba(0,229,212,.15);
+  }
+  .btn-primary:hover{transform:translateY(-1px); box-shadow:0 6px 28px rgba(255,94,58,.35), 0 6px 28px rgba(0,229,212,.25)}
+  .btn-ghost{background:var(--surface); color:var(--text)}
+  .btn-ghost:hover{background:var(--surface-2); border-color:var(--border-strong)}
+  .btn:disabled{opacity:.4; cursor:not-allowed; transform:none!important}
+  .controls{display:flex; flex-direction:column; gap:8px; margin-bottom:16px}
+
+  /* ── History ── */
+  .history-list{
+    max-height:280px; overflow-y:auto; font-family:'JetBrains Mono',monospace;
+    font-size:12px; display:flex; flex-direction:column; gap:4px;
+    padding-right:4px;
+  }
+  .history-list::-webkit-scrollbar{width:4px}
+  .history-list::-webkit-scrollbar-track{background:transparent}
+  .history-list::-webkit-scrollbar-thumb{background:var(--border-strong); border-radius:2px}
+  .history-item{
+    display:grid; grid-template-columns:32px 1fr auto; align-items:center;
+    gap:8px; padding:6px 10px; border-radius:6px;
+    background:var(--surface); border:1px solid transparent;
+    transition:all .15s;
+  }
+  .history-item:hover{border-color:var(--border)}
+  .history-item .num{color:var(--text-dim); font-size:11px}
+  .history-item .move{color:var(--text-muted)}
+  .history-item .move .pl-x{color:var(--x-color); font-weight:600}
+  .history-item .move .pl-o{color:var(--o-color); font-weight:600}
+  .history-item .pos{color:var(--text); font-size:11px; opacity:.7}
+  .history-empty{
+    text-align:center; padding:24px 12px; color:var(--text-dim);
+    font-size:12px; font-style:italic;
+  }
+
+  /* ── How to play ── */
+  .rules-mini{font-size:12px; color:var(--text-muted); line-height:1.6}
+  .rules-mini li{margin-bottom:6px; padding-left:14px; position:relative}
+  .rules-mini li::before{
+    content:''; position:absolute; left:0; top:7px;
+    width:5px; height:5px; border-radius:50%; background:var(--accent);
+  }
+  .rules-mini strong{color:var(--text)}
+
+  /* ── Modal ── */
+  .modal-backdrop{
+    position:fixed; inset:0; z-index:100;
+    background:rgba(6,8,16,.8); backdrop-filter:blur(8px);
+    display:grid; place-items:center; opacity:0; pointer-events:none;
+    transition:opacity .3s;
+  }
+  .modal-backdrop.open{opacity:1; pointer-events:auto}
+  .modal{
+    background:var(--bg-1); border:1px solid var(--border-strong);
+    border-radius:18px; padding:32px; max-width:560px; width:90%;
+    transform:scale(.95); transition:transform .3s;
+    box-shadow:0 30px 80px rgba(0,0,0,.6);
+  }
+  .modal-backdrop.open .modal{transform:scale(1)}
+  .modal h2{
+    font-family:'Unbounded',sans-serif; font-weight:800;
+    font-size:24px; margin:0 0 6px;
+  }
+  .modal .sub{color:var(--text-muted); font-size:13px; margin-bottom:22px}
+  .modal .rule-block{margin-bottom:18px}
+  .modal .rule-block h4{
+    font-size:12px; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--accent); margin:0 0 8px; font-weight:600;
+  }
+  .modal .rule-block p{font-size:14px; color:var(--text-muted); line-height:1.6; margin:0}
+  .modal .close-btn{
+    margin-top:8px; width:100%; padding:12px;
+    background:linear-gradient(135deg, var(--x-color), var(--o-color));
+    color:var(--bg-0); border:none; border-radius:10px;
+    font-family:inherit; font-weight:700; font-size:13px;
+    letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;
+  }
+
+  /* ── Win Overlay ── */
+  .win-overlay{
+    position:fixed; inset:0; z-index:90; pointer-events:none;
+    display:grid; place-items:center; opacity:0; transition:opacity .5s;
+  }
+  .win-overlay.show{opacity:1; pointer-events:auto}
+  .win-card{
+    text-align:center; transform:translateY(20px) scale(.95);
+    transition:transform .6s cubic-bezier(.2,.8,.2,1);
+  }
+  .win-overlay.show .win-card{transform:translateY(0) scale(1)}
+  .win-title{
+    font-family:'Unbounded',sans-serif; font-weight:900;
+    font-size:clamp(48px, 8vw, 88px); line-height:1;
+    background:linear-gradient(135deg, var(--x-color), var(--o-color));
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+    margin-bottom:8px; letter-spacing:2px;
+  }
+  .win-title.draw{
+    background:linear-gradient(135deg, var(--text-muted), var(--accent));
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  .win-sub{
+    font-size:14px; letter-spacing:3px; text-transform:uppercase;
+    color:var(--text-muted); margin-bottom:28px;
+  }
+  .win-btn{
+    pointer-events:auto; padding:14px 36px;
+    background:var(--surface-2); border:1px solid var(--border-strong);
+    color:var(--text); border-radius:12px; cursor:pointer;
+    font-family:inherit; font-weight:600; font-size:13px;
+    letter-spacing:2px; text-transform:uppercase;
+    backdrop-filter:blur(12px); transition:all .2s;
+  }
+  .win-btn:hover{background:var(--surface); border-color:var(--accent); color:var(--accent)}
+
+  /* ── Toast ── */
+  .toasts{
+    position:fixed; top:90px; right:28px; z-index:80;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .toast{
+    background:var(--bg-1); border:1px solid var(--border-strong);
+    border-left:3px solid var(--accent);
+    padding:12px 18px; border-radius:8px; font-size:13px;
+    backdrop-filter:blur(12px);
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
+    animation:toastIn .3s ease-out, toastOut .3s ease-in 2.7s forwards;
+    max-width:320px;
+  }
+  .toast.x{border-left-color:var(--x-color)}
+  .toast.o{border-left-color:var(--o-color)}
+  @keyframes toastIn{from{transform:translateX(20px); opacity:0}to{transform:translateX(0); opacity:1}}
+  @keyframes toastOut{to{transform:translateX(20px); opacity:0}}
+
+  /* ── Responsive ── */
+  @media (max-width:1100px){
+    main{grid-template-columns:1fr; gap:16px; padding:18px}
+    .panel{order:2}
+    .board-section{order:1}
+    .mega-board{width:min(92vw, 540px)}
+    .board-footer{width:min(92vw, 540px)}
+  }
+  @media (max-width:600px){
+    header{padding:14px 16px; flex-wrap:wrap; gap:10px}
+    .brand h1{font-size:18px}
+    .brand p{font-size:10px}
+    .header-controls{width:100%; justify-content:flex-start}
+    .mega-board{width:92vw; gap:6px}
+    .mini-board{padding:4px; gap:2px}
+    .board-frame{padding:12px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.01ms!important; transition-duration:.01ms!important}
+  }
+</style>
+</head>
+<body>
+  <div class="bg-gradient"></div>
+  <div class="bg-grid"></div>
+  <canvas id="particles"></canvas>
+
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">N</div>
+        <div>
+          <h1>NEXUS</h1>
+          <p>Ultimate Tic Tac Toe</p>
+        </div>
+      </div>
+      <div class="header-controls">
+        <div class="seg" id="modeSeg">
+          <button data-mode="ai" class="active">VS AI</button>
+          <button data-mode="pvp">2 Players</button>
+        </div>
+        <div class="seg" id="diffSeg">
+          <button data-diff="easy">Easy</button>
+          <button data-diff="medium">Medium</button>
+          <button data-diff="hard" class="active">Hard</button>
+        </div>
+        <button class="icon-btn" id="soundBtn" title="Toggle sound">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="rulesBtn" title="How to play">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Left panel -->
+      <aside>
+        <div class="panel turn-panel">
+          <h3>Current Turn</h3>
+          <div class="turn-cards">
+            <div class="player-card x active" id="cardX">
+              <div class="symbol">X</div>
+              <div class="label" id="labelX">You</div>
+            </div>
+            <div class="vs">VS</div>
+            <div class="player-card o" id="cardO">
+              <div class="symbol">O</div>
+              <div class="label" id="labelO">AI</div>
+            </div>
+          </div>
+          <div class="status-box">
+            <div class="label">Status</div>
+            <div class="value" id="statusText">Your move — play anywhere</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Statistics</h3>
+          <div class="stat-row">
+            <span class="label"><span class="dot x"></span>X Wins</span>
+            <span class="value" id="statX">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="label"><span class="dot o"></span>O Wins</span>
+            <span class="value" id="statO">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="label"><span class="dot d"></span>Draws</span>
+            <span class="value" id="statD">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="label">Total Games</span>
+            <span class="value" id="statT">0</span>
+          </div>
+          <button class="reset-stats" id="resetStats">Reset Statistics</button>
+        </div>
+      </aside>
+
+      <!-- Center board -->
+      <section class="board-section">
+        <div class="board-frame">
+          <div class="mega-board" id="megaBoard"></div>
+        </div>
+        <div class="board-footer">
+          <div class="item">MOVE <strong id="moveCount">0</strong></div>
+          <div class="item">TIME <strong id="timer">00:00</strong></div>
+          <div class="item">MODE <strong id="modeLabel">VS AI · HARD</strong></div>
+        </div>
+      </section>
+
+      <!-- Right panel -->
+      <aside>
+        <div class="panel">
+          <div class="controls">
+            <button class="btn btn-primary" id="newGameBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              New Game
+            </button>
+            <button class="btn btn-ghost" id="undoBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+              </svg>
+              Undo Move
+            </button>
+          </div>
+          <h3>Move History</h3>
+          <div class="history-list" id="historyList">
+            <div class="history-empty">No moves yet</div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:16px">
+          <h3>Quick Rules</h3>
+          <ul class="rules-mini" style="list-style:none; padding:0; margin:0">
+            <li>Your move's <strong>cell position</strong> sends opponent to that mini-board</li>
+            <li>Win a mini-board to claim it on the mega-grid</li>
+            <li>If target board is full/won, opponent plays anywhere</li>
+            <li>Win <strong>3 mini-boards in a row</strong> on the mega-grid</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Rules Modal -->
+  <div class="modal-backdrop" id="rulesModal">
+    <div class="modal">
+      <h2>How to Play</h2>
+      <p class="sub">Ultimate Tic Tac Toe — a deceptively deep twist on the classic.</p>
+      <div class="rule-block">
+        <h4>The Setup</h4>
+        <p>9 mini-boards arranged in a 3×3 mega-grid. Each mini-board is its own 3×3 tic-tac-toe game.</p>
+      </div>
+      <div class="rule-block">
+        <h4>The Twist</h4>
+        <p>The <strong>cell position</strong> of your move determines which mini-board your opponent must play in next. Play top-left? Opponent goes to the top-left mini-board. This creates chains of forced moves.</p>
+      </div>
+      <div class="rule-block">
+        <h4>The Escape</h4>
+        <p>If your target mini-board is already won or full, you may play in any open mini-board. Skilled players use this to escape bad positions.</p>
+      </div>
+      <div class="rule-block">
+        <h4>The Win</h4>
+        <p>Win three mini-boards in a row (horizontally, vertically, or diagonally) on the mega-grid to win the game.</p>
+      </div>
+      <button class="close-btn" id="closeRules">Got it</button>
+    </div>
+  </div>
+
+  <!-- Win Overlay -->
+  <div class="win-overlay" id="winOverlay">
+    <div class="win-card">
+      <div class="win-title" id="winTitle">X WINS</div>
+      <div class="win-sub" id="winSub">Victory</div>
+      <button class="win-btn" id="winNewGame">Play Again</button>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   NEXUS — Ultimate Tic Tac Toe
+   ═══════════════════════════════════════════════════════════════ */
+
+// ─── Constants ───
+const WIN_LINES = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6]
+];
+const BOARD_NAMES = ['Top-Left','Top-Center','Top-Right','Mid-Left','Center','Mid-Right','Bot-Left','Bot-Center','Bot-Right'];
+const CELL_NAMES = ['Top-Left','Top-Center','Top-Right','Mid-Left','Center','Mid-Right','Bot-Left','Bot-Center','Bot-Right'];
+const BOARD_WEIGHTS = [3,2,3, 2,4,2, 3,2,3]; // mini-board strategic values
+
+// ─── State ───
+let state, settings, stats, timerInterval, aiThinking;
+
+function initState(){
+  return {
+    miniBoards: Array.from({length:9}, () => Array(9).fill(null)),
+    megaBoard: Array(9).fill(null),
+    miniWinLines: Array(9).fill(null),
+    megaWinLine: null,
+    currentPlayer: 'X',
+    activeBoard: -1,
+    gameOver: false,
+    winner: null,
+    moveHistory: [],
+    lastMove: null,
+    startTime: Date.now()
+  };
+}
+
+settings = {
+  mode: 'ai',
+  difficulty: 'hard',
+  sound: true,
+  aiPlayer: 'O'
+};
+
+// ─── DOM ───
+const $ = id => document.getElementById(id);
+const megaBoardEl = $('megaBoard');
+
+// ─── Audio ───
+let audioCtx;
+function initAudio(){
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function playTone(freq, dur=0.1, type='sine', vol=0.08){
+  if (!settings.sound || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, audioCtx.currentTime);
+  gain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + dur);
+}
+function sndPlace(p){
+  playTone(p==='X' ? 520 : 380, 0.08, 'triangle', 0.07);
+}
+function sndWinMini(){
+  [523, 659].forEach((f,i) => setTimeout(()=>playTone(f, 0.12, 'sine', 0.08), i*60));
+}
+function sndWinGame(){
+  [523, 659, 784, 1047, 1319].forEach((f,i) => setTimeout(()=>playTone(f, 0.25, 'sine', 0.1), i*90));
+}
+function sndDraw(){
+  playTone(300, 0.15, 'sawtooth', 0.05);
+  setTimeout(()=>playTone(260, 0.2, 'sawtooth', 0.05), 100);
+}
+function sndInvalid(){
+  playTone(140, 0.1, 'square', 0.04);
+}
+
+// ─── Game Logic ───
+function checkWinner(board){
+  for (const line of WIN_LINES){
+    const [a,b,c] = line;
+    if (board[a] && board[a]===board[b] && board[a]===board[c]){
+      return { winner: board[a], line };
+    }
+  }
+  if (board.every(c => c !== null)) return { winner: 'draw', line: null };
+  return null;
+}
+
+function getValidMoves(s){
+  const moves = [];
+  const tryBoard = (b) => {
+    if (s.megaBoard[b] !== null) return;
+    for (let c=0; c<9; c++){
+      if (s.miniBoards[b][c] === null) moves.push({board:b, cell:c});
+    }
+  };
+  if (s.activeBoard === -1){
+    for (let b=0; b<9; b++) tryBoard(b);
+  } else {
+    tryBoard(s.activeBoard);
+    // Safety: if active board has no moves, fall back to free play
+    if (moves.length === 0){
+      for (let b=0; b<9; b++) tryBoard(b);
+    }
+  }
+  return moves;
+}
+
+function applyMove(s, move){
+  const {board, cell} = move;
+  const player = s.currentPlayer;
+  s.miniBoards[board][cell] = player;
+  s.lastMove = {board, cell, player};
+
+  // Check mini-board win
+  const result = checkWinner(s.miniBoards[board]);
+  let miniWon = false;
+  if (result){
+    s.megaBoard[board] = result.winner;
+    s.miniWinLines[board] = result.line;
+    miniWon = true;
+
+    // Check mega-board win
+    const megaResult = checkWinner(s.megaBoard);
+    if (megaResult){
+      s.gameOver = true;
+      s.winner = megaResult.winner;
+      s.megaWinLine = megaResult.line;
+    }
+  }
+
+  // Determine next active board
+  const nextBoard = cell;
+  if (s.megaBoard[nextBoard] !== null || s.miniBoards[nextBoard].every(c => c !== null)){
+    s.activeBoard = -1;
+  } else {
+    s.activeBoard = nextBoard;
+  }
+
+  // Check draw (no valid moves and no winner)
+  if (!s.gameOver){
+    const moves = getValidMoves(s);
+    if (moves.length === 0){
+      s.gameOver = true;
+      s.winner = 'draw';
+    }
+  }
+
+  s.currentPlayer = player === 'X' ? 'O' : 'X';
+  return { miniWon };
+}
+
+function cloneState(s){
+  return {
+    miniBoards: s.miniBoards.map(b => [...b]),
+    megaBoard: [...s.megaBoard],
+    miniWinLines: [...s.miniWinLines],
+    megaWinLine: s.megaWinLine,
+    currentPlayer: s.currentPlayer,
+    activeBoard: s.activeBoard,
+    gameOver: s.gameOver,
+    winner: s.winner,
+    moveHistory: s.moveHistory,
+    lastMove: s.lastMove
+  };
+}
+
+// ─── AI ───
+function evaluatePosition(s, aiPlayer){
+  if (s.winner === aiPlayer) return 100000;
+  if (s.winner && s.winner !== 'draw') return -100000;
+  if (s.winner === 'draw') return 0;
+
+  const opp = aiPlayer === 'X' ? 'O' : 'X';
+  let score = 0;
+
+  // Mega-board position weights
+  for (let i=0; i<9; i++){
+    if (s.megaBoard[i] === aiPlayer) score += 60 * BOARD_WEIGHTS[i];
+    else if (s.megaBoard[i] === opp) score -= 60 * BOARD_WEIGHTS[i];
+  }
+
+  // Mega-board line potential
+  for (const line of WIN_LINES){
+    let ai=0, op=0;
+    for (const idx of line){
+      if (s.megaBoard[idx] === aiPlayer) ai++;
+      else if (s.megaBoard[idx] === opp) op++;
+    }
+    if (ai > 0 && op === 0) score += [0, 8, 80, 900][ai];
+    else if (op > 0 && ai === 0) score -= [0, 8, 80, 900][op];
+  }
+
+  // Mini-board evaluation
+  for (let b=0; b<9; b++){
+    if (s.megaBoard[b] !== null) continue;
+    const board = s.miniBoards[b];
+
+    for (let i=0; i<9; i++){
+      if (board[i] === aiPlayer) score += BOARD_WEIGHTS[i] * 0.8;
+      else if (board[i] === opp) score -= BOARD_WEIGHTS[i] * 0.8;
+    }
+
+    for (const line of WIN_LINES){
+      let ai=0, op=0;
+      for (const idx of line){
+        if (board[idx] === aiPlayer) ai++;
+        else if (board[idx] === opp) op++;
+      }
+      if (ai > 0 && op === 0) score += [0, 1.5, 12][ai];
+      else if (op > 0 && ai === 0) score -= [0, 1.5, 12][op];
+    }
+  }
+
+  // Penalize sending opponent to free play (activeBoard = -1)
+  if (s.activeBoard === -1 && s.currentPlayer === opp){
+    score -= 5;
+  }
+
+  return score;
+}
+
+function orderMoves(moves, s){
+  const player = s.currentPlayer;
+  return moves.map(m => {
+    let priority = 0;
+    // Prefer center cell
+    if (m.cell === 4) priority += 3;
+    // Prefer corners
+    if ([0,2,6,8].includes(m.cell)) priority += 2;
+    // Prefer center board
+    if (m.board === 4) priority += 2;
+    // Check if move wins mini-board
+    const testBoard = [...s.miniBoards[m.board]];
+    testBoard[m.cell] = player;
+    for (const line of WIN_LINES){
+      const [a,b,c] = line;
+      if (testBoard[a]===player && testBoard[b]===player && testBoard[c]===player){
+        priority += 50;
+        break;
+      }
+    }
+    // Check if move blocks opponent win in mini-board
+    const oppBoard = [...s.miniBoards[m.board]];
+    const opp = player === 'X' ? 'O' : 'X';
+    oppBoard[m.cell] = opp;
+    for (const line of WIN_LINES){
+      const [a,b,c] = line;
+      if (oppBoard[a]===opp && oppBoard[b]===opp && oppBoard[c]===opp){
+        priority += 40;
+        break;
+      }
+    }
+    return { move: m, priority };
+  }).sort((a,b) => b.priority - a.priority).map(x => x.move);
+}
+
+function minimax(s, depth, alpha, beta, maximizing, aiPlayer){
+  if (depth === 0 || s.gameOver){
+    return { score: evaluatePosition(s, aiPlayer) };
+  }
+
+  const moves = orderMoves(getValidMoves(s), s);
+  if (moves.length === 0) return { score: evaluatePosition(s, aiPlayer) };
+
+  let bestMove = null;
+
+  if (maximizing){
+    let maxScore = -Infinity;
+    for (const move of moves){
+      const ns = cloneState(s);
+      applyMove(ns, move);
+      const result = minimax(ns, depth-1, alpha, beta, false, aiPlayer);
+      if (result.score > maxScore){
+        maxScore = result.score;
+        bestMove = move;
+      }
+      alpha = Math.max(alpha, result.score);
+      if (beta <= alpha) break;
+    }
+    return { score: maxScore, move: bestMove };
+  } else {
+    let minScore = Infinity;
+    for (const move of moves){
+      const ns = cloneState(s);
+      applyMove(ns, move);
+      const result = minimax(ns, depth-1, alpha, beta, true, aiPlayer);
+      if (result.score < minScore){
+        minScore = result.score;
+        bestMove = move;
+      }
+      beta = Math.min(beta, result.score);
+      if (beta <= alpha) break;
+    }
+    return { score: minScore, move: bestMove };
+  }
+}
+
+function computeAIMove(){
+  const moves = getValidMoves(state);
+  if (moves.length === 0) return null;
+
+  const aiPlayer = settings.aiPlayer;
+
+  if (settings.difficulty === 'easy'){
+    // 60% random, 40% best of depth 1
+    if (Math.random() < 0.6){
+      return moves[Math.floor(Math.random() * moves.length)];
+    }
+    const result = minimax(state, 1, -Infinity, Infinity, true, aiPlayer);
+    return result.move || moves[0];
+  }
+
+  if (settings.difficulty === 'medium'){
+    // Depth 2 with some randomness
+    if (Math.random() < 0.15){
+      return moves[Math.floor(Math.random() * moves.length)];
+    }
+    const result = minimax(state, 2, -Infinity, Infinity, true, aiPlayer);
+    return result.move || moves[0];
+  }
+
+  // Hard: depth 4 with move ordering
+  // Use iterative deepening with time limit
+  const startTime = Date.now();
+  const timeLimit = 1200;
+  let bestMove = null;
+  let bestScore = -Infinity;
+
+  for (let depth = 1; depth <= 4; depth++){
+    const result = minimax(state, depth, -Infinity, Infinity, true, aiPlayer);
+    if (result.move){
+      bestMove = result.move;
+      bestScore = result.score;
+    }
+    if (Date.now() - startTime > timeLimit) break;
+    if (bestScore > 50000) break; // winning move found
+  }
+
+  return bestMove || moves[0];
+}
+
+// ─── Rendering ───
+function createPieceSVG(player, preview=false){
+  const cls = preview ? `piece piece-${player.toLowerCase()} preview` : `piece piece-${player.toLowerCase()}`;
+  if (player === 'X'){
+    return `<div class="${cls}"><svg viewBox="0 0 100 100">
+      <path d="M 25 25 L 75 75"/>
+      <path d="M 75 25 L 25 75"/>
+    </svg></div>`;
+  } else {
+    return `<div class="${cls}"><svg viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="28"/>
+    </svg></div>`;
+  }
+}
+
+function buildBoard(){
+  megaBoardEl.innerHTML = '';
+  for (let b=0; b<9; b++){
+    const mini = document.createElement('div');
+    mini.className = 'mini-board';
+    mini.dataset.board = b;
+    for (let c=0; c<9; c++){
+      const cell = document.createElement('button');
+      cell.className = 'cell';
+      cell.dataset.board = b;
+      cell.dataset.cell = c;
+      cell.setAttribute('aria-label', `Board ${BOARD_NAMES[b]}, cell ${CELL_NAMES[c]}`);
+      mini.appendChild(cell);
+    }
+    megaBoardEl.appendChild(mini);
+  }
+}
+
+function render(){
+  // Mini-boards and cells
+  for (let b=0; b<9; b++){
+    const miniEl = megaBoardEl.querySelector(`.mini-board[data-board="${b}"]`);
+    miniEl.className = 'mini-board';
+    
+    if (state.megaBoard[b] === 'X') miniEl.classList.add('won-x');
+    else if (state.megaBoard[b] === 'O') miniEl.classList.add('won-o');
+    else if (state.megaBoard[b] === 'draw') miniEl.classList.add('drawn');
+    
+    if (!state.gameOver && state.activeBoard === b){
+      miniEl.classList.add(state.currentPlayer === 'X' ? 'active-x' : 'active-o');
+    }
+
+    // Cells
+    for (let c=0; c<9; c++){
+      const cellEl = miniEl.children[c];
+      const val = state.miniBoards[b][c];
+      cellEl.className = 'cell';
+      cellEl.innerHTML = '';
+
+      if (val){
+        cellEl.classList.add('filled');
+        cellEl.innerHTML = createPieceSVG(val);
+      }
+
+      if (state.megaBoard[b] !== null){
+        cellEl.classList.add('locked');
+      }
+
+      // Last move highlight
+      if (state.lastMove && state.lastMove.board === b && state.lastMove.cell === c){
+        cellEl.classList.add('last-move');
+      }
+
+      // Winning cells in mini-board
+      if (state.miniWinLines[b] && state.miniWinLines[b].includes(c)){
+        cellEl.classList.add('winning-cell');
+      }
+    }
+
+    // Win symbol overlay for won mini-boards
+    let overlay = miniEl.querySelector('.win-overlay');
+    if (state.megaBoard[b] && state.megaBoard[b] !== 'draw'){
+      if (!overlay){
+        overlay = document.createElement('div');
+        overlay.className = 'win-overlay';
+        miniEl.appendChild(overlay);
+      }
+      overlay.innerHTML = `<div class="win-symbol">${state.megaBoard[b]}</div>`;
+    } else if (overlay){
+      overlay.remove();
+    }
+
+    // Mini win line
+    let lineSvg = miniEl.querySelector('svg.mini-win-line');
+    if (state.miniWinLines[b]){
+      const line = state.miniWinLines[b];
+      const positions = [
+        [16.67, 16.67], [50, 16.67], [83.33, 16.67],
+        [16.67, 50],    [50, 50],    [83.33, 50],
+        [16.67, 83.33], [50, 83.33], [83.33, 83.33]
+      ];
+      const [r1,c1] = [Math.floor(line[0]/3), line[0]%3];
+      const [r2,c2] = [Math.floor(line[2]/3), line[2]%3];
+      const x1 = positions[line[0]][0], y1 = positions[line[0]][1];
+      const x2 = positions[line[2]][0], y2 = positions[line[2]][1];
+      const color = state.megaBoard[b] === 'X' ? 'var(--x-color)' : 'var(--o-color)';
+      if (!lineSvg){
+        lineSvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+        lineSvg.classList.add('mini-win-line');
+        lineSvg.setAttribute('viewBox','0 0 100 100');
+        lineSvg.style.position = 'absolute';
+        lineSvg.style.inset = '6px';
+        lineSvg.style.width = 'calc(100% - 12px)';
+        lineSvg.style.height = 'calc(100% - 12px)';
+        lineSvg.style.pointerEvents = 'none';
+        miniEl.appendChild(lineSvg);
+      }
+      lineSvg.innerHTML = `<line class="mini-win-line" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:${color}"/>`;
+    } else if (lineSvg){
+      lineSvg.remove();
+    }
+  }
+
+  // Mega win line
+  let megaLine = megaBoardEl.querySelector('svg.mega-win-line');
+  if (state.megaWinLine){
+    const line = state.megaWinLine;
+    const positions = [
+      [16.67, 16.67], [50, 16.67], [83.33, 16.67],
+      [16.67, 50],    [50, 50],    [83.33, 50],
+      [16.67, 83.33], [50, 83.33], [83.33, 83.33]
+    ];
+    const x1 = positions[line[0]][0], y1 = positions[line[0]][1];
+    const x2 = positions[line[2]][0], y2 = positions[line[2]][1];
+    const color = state.winner === 'X' ? 'var(--x-color)' : 'var(--o-color)';
+    if (!megaLine){
+      megaLine = document.createElementNS('http://www.w3.org/2000/svg','svg');
+      megaLine.classList.add('mega-win-line');
+      megaLine.setAttribute('viewBox','0 0 100 100');
+      megaLine.style.position = 'absolute';
+      megaLine.style.inset = '0';
+      megaLine.style.width = '100%';
+      megaLine.style.height = '100%';
+      megaLine.style.pointerEvents = 'none';
+      megaBoardEl.style.position = 'relative';
+      megaBoardEl.appendChild(megaLine);
+    }
+    megaLine.innerHTML = `<line class="mega-win-line" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:${color}"/>`;
+  } else if (megaLine){
+    megaLine.remove();
+  }
+
+  // Turn cards
+  $('cardX').classList.toggle('active', state.currentPlayer === 'X' && !state.gameOver);
+  $('cardO').classList.toggle('active', state.currentPlayer === 'O' && !state.gameOver);
+
+  // Labels
+  if (settings.mode === 'ai'){
+    $('labelX').textContent = settings.aiPlayer === 'X' ? 'AI' : 'You';
+    $('labelO').textContent = settings.aiPlayer === 'O' ? 'AI' : 'You';
+  } else {
+    $('labelX').textContent = 'Player 1';
+    $('labelO').textContent = 'Player 2';
+  }
+
+  // Status text
+  if (state.gameOver){
+    if (state.winner === 'draw'){
+      $('statusText').textContent = 'Game ended in a draw';
+    } else {
+      const winnerLabel = settings.mode === 'ai' 
+        ? (state.winner === settings.aiPlayer ? 'AI wins' : 'You win!')
+        : `Player ${state.winner} wins!`;
+      $('statusText').textContent = winnerLabel;
+    }
+  } else if (aiThinking){
+    $('statusText').innerHTML = `AI thinking<span class="thinking-dot"></span>`;
+  } else {
+    const playerLabel = settings.mode === 'ai'
+      ? (state.currentPlayer === settings.aiPlayer ? 'AI' : 'Your')
+      : `Player ${state.currentPlayer}'s`;
+    if (state.activeBoard === -1){
+      $('statusText').textContent = `${playerLabel} move — play anywhere`;
+    } else {
+      $('statusText').textContent = `${playerLabel} move — ${BOARD_NAMES[state.activeBoard]} board`;
+    }
+  }
+
+  // Move count
+  $('moveCount').textContent = state.moveHistory.length;
+
+  // Undo button
+  $('undoBtn').disabled = state.moveHistory.length === 0 || aiThinking || state.gameOver;
+
+  renderHistory();
+}
+
+function renderHistory(){
+  const list = $('historyList');
+  if (state.moveHistory.length === 0){
+    list.innerHTML = '<div class="history-empty">No moves yet</div>';
+    return;
+  }
+  list.innerHTML = '';
+  // Show most recent first
+  for (let i = state.moveHistory.length - 1; i >= 0; i--){
+    const m = state.moveHistory[i];
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const plCls = m.player === 'X' ? 'pl-x' : 'pl-o';
+    item.innerHTML = `
+      <span class="num">${String(i+1).padStart(2,'0')}</span>
+      <span class="move"><span class="${plCls}">${m.player}</span> → ${BOARD_NAMES[m.board]}</span>
+      <span class="pos">${CELL_NAMES[m.cell]}</span>
+    `;
+    list.appendChild(item);
+  }
+}
+
+function renderStats(){
+  $('statX').textContent = stats.xWins;
+  $('statO').textContent = stats.oWins;
+  $('statD').textContent = stats.draws;
+  $('statT').textContent = stats.xWins + stats.oWins + stats.draws;
+}
+
+function updateModeLabel(){
+  const modeTxt = settings.mode === 'ai' ? `VS AI · ${settings.difficulty.toUpperCase()}` : '2 PLAYERS';
+  $('modeLabel').textContent = modeTxt;
+}
+
+// ─── Particles ───
+const canvas = $('particles');
+const ctx = canvas.getContext('2d');
+let particles = [];
+
+function resizeCanvas(){
+  canvas.width = window.innerWidth * devicePixelRatio;
+  canvas.height = window.innerHeight * devicePixelRatio;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function spawnParticles(x, y, color, count=20, intensity=1){
+  for (let i=0; i<count; i++){
+    const angle = Math.random() * Math.PI * 2;
+    const speed = (Math.random() * 3 + 1) * intensity;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1,
+      decay: 0.015 + Math.random() * 0.02,
+      size: Math.random() * 3 + 1,
+      color
+    });
+  }
+}
+
+function spawnWinParticles(color){
+  const rect = megaBoardEl.getBoundingClientRect();
+  const cx = rect.left + rect.width/2;
+  const cy = rect.top + rect.height/2;
+  // Multiple bursts
+  for (let i=0; i<5; i++){
+    setTimeout(() => {
+      const offsetX = (Math.random() - 0.5) * rect.width * 0.6;
+      const offsetY = (Math.random() - 0.5) * rect.height * 0.6;
+      spawnParticles(cx + offsetX, cy + offsetY, color, 40, 2);
+    }, i * 150);
+  }
+}
+
+function animateParticles(){
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles = particles.filter(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.08; // gravity
+    p.vx *= 0.99;
+    p.life -= p.decay;
+    if (p.life <= 0) return false;
+
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return true;
+  });
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+// ─── Interactions ───
+function isCellValid(board, cell){
+  if (state.gameOver) return false;
+  if (state.megaBoard[board] !== null) return false;
+  if (state.miniBoards[board][cell] !== null) return false;
+  if (state.activeBoard !== -1 && state.activeBoard !== board) return false;
+  return true;
+}
+
+function handleCellClick(board, cell){
+  if (state.gameOver || aiThinking) return;
+  if (settings.mode === 'ai' && state.currentPlayer === settings.aiPlayer) return;
+
+  if (!isCellValid(board, cell)){
+    sndInvalid();
+    const cellEl = megaBoardEl.querySelector(`.mini-board[data-board="${board}"]`).children[cell];
+    cellEl.classList.add('invalid-flash');
+    setTimeout(() => cellEl.classList.remove('invalid-flash'), 300);
+    return;
+  }
+
+  initAudio();
+  makeMove(board, cell);
+
+  if (!state.gameOver && settings.mode === 'ai' && state.currentPlayer === settings.aiPlayer){
+    setTimeout(runAI, 350);
+  }
+}
+
+function makeMove(board, cell){
+  const player = state.currentPlayer;
+  state.moveHistory.push({board, cell, player});
+  const { miniWon } = applyMove(state, {board, cell});
+
+  // Sound + particles
+  sndPlace(player);
+  if (miniWon){
+    setTimeout(() => {
+      sndWinMini();
+      const cellEl = megaBoardEl.querySelector(`.mini-board[data-board="${board}"]`);
+      const r = cellEl.getBoundingClientRect();
+      const color = player === 'X' ? '#ff5e3a' : '#00e5d4';
+      spawnParticles(r.left + r.width/2, r.top + r.height/2, color, 25, 1.2);
+      showToast(`${player} captured ${BOARD_NAMES[board]} board`, player.toLowerCase());
+    }, 200);
+  }
+
+  render();
+
+  if (state.gameOver){
+    handleGameEnd();
+  }
+}
+
+function runAI(){
+  if (state.gameOver) return;
+  aiThinking = true;
+  render();
+
+  // Defer computation to allow UI update
+  setTimeout(() => {
+    const move = computeAIMove();
+    aiThinking = false;
+    if (move){
+      makeMove(move.board, move.cell);
+    } else {
+      render();
+    }
+  }, 50);
+}
+
+function handleGameEnd(){
+  stopTimer();
+  if (state.winner === 'draw'){
+    stats.draws++;
+    sndDraw();
+    setTimeout(() => showWinOverlay('draw'), 400);
+  } else {
+    if (state.winner === 'X') stats.xWins++;
+    else stats.oWins++;
+    sndWinGame();
+    const color = state.winner === 'X' ? '#ff5e3a' : '#00e5d4';
+    spawnWinParticles(color);
+    setTimeout(() => showWinOverlay(state.winner), 600);
+  }
+  saveStats();
+  renderStats();
+}
+
+function showWinOverlay(winner){
+  const overlay = $('winOverlay');
+  const title = $('winTitle');
+  const sub = $('winSub');
+
+  if (winner === 'draw'){
+    title.textContent = 'DRAW';
+    title.classList.add('draw');
+    sub.textContent = 'No winner this time';
+  } else {
+    title.classList.remove('draw');
+    if (settings.mode === 'ai'){
+      const youWon = winner !== settings.aiPlayer;
+      title.textContent = youWon ? 'YOU WIN' : 'AI WINS';
+      sub.textContent = youWon ? 'Brilliant play' : 'Better luck next time';
+    } else {
+      title.textContent = `${winner} WINS`;
+      sub.textContent = `Player ${winner} takes the game`;
+    }
+  }
+  overlay.classList.add('show');
+}
+
+function hideWinOverlay(){
+  $('winOverlay').classList.remove('show');
+}
+
+// ─── Toast ───
+function showToast(msg, type=''){
+  const toasts = $('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  toasts.appendChild(t);
+  setTimeout(() => t.remove(), 3100);
+}
+
+// ─── Timer ───
+function startTimer(){
+  state.startTime = Date.now();
+  stopTimer();
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
+    $('timer').textContent = `${m}:${s}`;
+  }, 500);
+}
+function stopTimer(){
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+// ─── Stats persistence ───
+function saveStats(){
+  localStorage.setItem('nexus-stats', JSON.stringify(stats));
+}
+function loadStats(){
+  try {
+    const saved = localStorage.getItem('nexus-stats');
+    if (saved) stats = JSON.parse(saved);
+    else stats = {xWins:0, oWins:0, draws:0};
+  } catch(e){
+    stats = {xWins:0, oWins:0, draws:0};
+  }
+}
+
+// ─── New Game / Undo ───
+function newGame(){
+  state = initState();
+  aiThinking = false;
+  hideWinOverlay();
+  $('timer').textContent = '00:00';
+  buildBoard();
+  attachCellListeners();
+  render();
+  startTimer();
+
+  // If AI is X, it moves first
+  if (settings.mode === 'ai' && settings.aiPlayer === 'X'){
+    setTimeout(runAI, 500);
+  }
+}
+
+function undo(){
+  if (state.moveHistory.length === 0 || aiThinking || state.gameOver) return;
+
+  const movesToRemove = (settings.mode === 'ai' && state.moveHistory.length >= 2) ? 2 : 1;
+  const remaining = state.moveHistory.slice(0, -movesToRemove);
+
+  state = initState();
+  for (const m of remaining){
+    applyMove(state, {board: m.board, cell: m.cell});
+    state.moveHistory.push(m);
+  }
+  render();
+  showToast('Move undone');
+}
+
+// ─── Event listeners ───
+function attachCellListeners(){
+  megaBoardEl.querySelectorAll('.cell').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const b = parseInt(cell.dataset.board);
+      const c = parseInt(cell.dataset.cell);
+      handleCellClick(b, c);
+    });
+    cell.addEventListener('mouseenter', () => {
+      if (state.gameOver || aiThinking) return;
+      if (settings.mode === 'ai' && state.currentPlayer === settings.aiPlayer) return;
+      if (!isCellValid(parseInt(cell.dataset.board), parseInt(cell.dataset.cell))) return;
+      if (cell.querySelector('.piece')) return;
+      cell.innerHTML = createPieceSVG(state.currentPlayer, true);
+    });
+    cell.addEventListener('mouseleave', () => {
+      if (cell.querySelector('.piece.preview')){
+        cell.innerHTML = '';
+      }
+    });
+  });
+}
+
+ $('newGameBtn').addEventListener('click', () => {
+  newGame();
+  showToast('New game started');
+});
+ $('undoBtn').addEventListener('click', undo);
+ $('winNewGame').addEventListener('click', newGame);
+
+ $('modeSeg').addEventListener('click', e => {
+  if (!e.target.dataset.mode) return;
+  settings.mode = e.target.dataset.mode;
+  $('modeSeg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === settings.mode));
+  $('diffSeg').style.opacity = settings.mode === 'ai' ? '1' : '0.4';
+  $('diffSeg').style.pointerEvents = settings.mode === 'ai' ? 'auto' : 'none';
+  updateModeLabel();
+  newGame();
+});
+
+ $('diffSeg').addEventListener('click', e => {
+  if (!e.target.dataset.diff) return;
+  settings.difficulty = e.target.dataset.diff;
+  $('diffSeg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.diff === settings.difficulty));
+  updateModeLabel();
+  showToast(`Difficulty: ${settings.difficulty}`);
+});
+
+ $('soundBtn').addEventListener('click', () => {
+  settings.sound = !settings.sound;
+  $('soundBtn').style.opacity = settings.sound ? '1' : '0.4';
+  if (settings.sound) initAudio();
+  showToast(settings.sound ? 'Sound on' : 'Sound off');
+});
+
+ $('rulesBtn').addEventListener('click', () => $('rulesModal').classList.add('open'));
+ $('closeRules').addEventListener('click', () => $('rulesModal').classList.remove('open'));
+ $('rulesModal').addEventListener('click', e => {
+  if (e.target === $('rulesModal')) $('rulesModal').classList.remove('open');
+});
+
+ $('resetStats').addEventListener('click', () => {
+  stats = {xWins:0, oWins:0, draws:0};
+  saveStats();
+  renderStats();
+  showToast('Statistics reset');
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'n' || e.key === 'N'){ newGame(); showToast('New game'); }
+  if (e.key === 'u' || e.key === 'U'){ undo(); }
+  if (e.key === 'Escape'){
+    $('rulesModal').classList.remove('open');
+    hideWinOverlay();
+  }
+});
+
+// ─── Init ───
+loadStats();
+renderStats();
+updateModeLabel();
+ $('diffSeg').style.opacity = '1';
+newGame();
+</script>
+</body>
+</html>
